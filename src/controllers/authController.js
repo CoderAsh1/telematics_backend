@@ -20,7 +20,7 @@ const signup = async (req, res) => {
         const user = result.rows[0];
         const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-        res.status(201).json({ 
+        res.status(201).json({
             user: {
                 id: user.id,
                 name: user.name,
@@ -28,8 +28,8 @@ const signup = async (req, res) => {
                 phone: user.phone,
                 role: user.role,
                 access_role: user.access_role
-            }, 
-            token 
+            },
+            token
         });
     } catch (error) {
         if (error.code === '23505') {
@@ -51,14 +51,11 @@ const login = async (req, res) => {
         const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
         const user = result.rows[0];
 
-        if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
+        if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+        if (!user.role || !user.access_role) return res.status(403).json({ message: 'Access denied. Account is incomplete (missing role or access level).' });
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
+        if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
         const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
@@ -99,7 +96,7 @@ const updateUser = async (req, res) => {
         }
 
         const result = await db.query(query, params);
-        
+
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
