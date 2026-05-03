@@ -24,13 +24,20 @@ const addVehicle = async (req, res) => {
 };
 
 const getVehicles = async (req, res) => {
-    const transporter_id = req.user.id;
+    const { id, role } = req.user;
 
     try {
-        const result = await db.query(
-            'SELECT * FROM vehicle_master WHERE transporter_id = $1',
-            [transporter_id]
-        );
+        let query = 'SELECT * FROM vehicle_master';
+        let params = [];
+
+        const userRole = role ? role.toLowerCase() : '';
+
+        if (userRole !== 'admin') {
+            query += ' WHERE transporter_id = $1';
+            params.push(id);
+        }
+
+        const result = await db.query(query, params);
         res.json(result.rows);
     } catch (error) {
         console.error(error);
@@ -39,22 +46,37 @@ const getVehicles = async (req, res) => {
 };
 
 const getLiveStatus = async (req, res) => {
-    const transporter_id = req.user.id;
+    const { id, role } = req.user;
 
     try {
-        const query = `
+        let query = `
             SELECT 
+                vm.id as vehicle_id,
                 vm.vehicle_no, 
                 vm.imei, 
                 vm.vehicle_type, 
-                vsl.*,
+                vsl.latitude,
+                vsl.longitude,
+                vsl.speed,
+                vsl.angle,
+                vsl.voltage,
+                vsl.status,
+                vsl.last_update,
                 COALESCE(vsl.icon, vim.icon_name) as current_icon
-            FROM vehicle_status_live vsl
-            JOIN vehicle_master vm ON vsl.vehicle_id = vm.id
+            FROM vehicle_master vm
+            LEFT JOIN vehicle_status_live vsl ON vm.id = vsl.vehicle_id
             LEFT JOIN vehicle_icon_mapping vim ON vm.vehicle_type = vim.vehicle_type AND vsl.status = vim.status
-            WHERE vm.transporter_id = $1
         `;
-        const result = await db.query(query, [transporter_id]);
+        let params = [];
+
+        const userRole = role ? role.toLowerCase() : '';
+
+        if (userRole !== 'admin') {
+            query += ' WHERE vm.transporter_id = $1';
+            params.push(id);
+        }
+
+        const result = await db.query(query, params);
         res.json(result.rows);
     } catch (error) {
         console.error(error);
@@ -64,13 +86,19 @@ const getLiveStatus = async (req, res) => {
 
 const getTelemetry = async (req, res) => {
     const { vehicle_id } = req.params;
-    const transporter_id = req.user.id;
+    const { id, role } = req.user;
 
     try {
-        const vehicleCheck = await db.query(
-            'SELECT id FROM vehicle_master WHERE id = $1 AND transporter_id = $2',
-            [vehicle_id, transporter_id]
-        );
+        const userRole = role ? role.toLowerCase() : '';
+        let checkQuery = 'SELECT id FROM vehicle_master WHERE id = $1';
+        let checkParams = [vehicle_id];
+
+        if (userRole !== 'admin') {
+            checkQuery += ' AND transporter_id = $2';
+            checkParams.push(id);
+        }
+
+        const vehicleCheck = await db.query(checkQuery, checkParams);
 
         if (vehicleCheck.rows.length === 0) {
             return res.status(403).json({ message: 'Access denied or vehicle not found' });
