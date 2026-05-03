@@ -1,7 +1,7 @@
 const db = require('../config/db');
 
 const addVehicle = async (req, res) => {
-    const { vehicle_no, imei, model, capacity, odo_meter } = req.body;
+    const { vehicle_no, imei, model, capacity, odo_meter, vehicle_type } = req.body;
     const transporter_id = req.user.id;
 
     if (!vehicle_no || !imei) {
@@ -10,8 +10,8 @@ const addVehicle = async (req, res) => {
 
     try {
         const result = await db.query(
-            'INSERT INTO vehicle_master (transporter_id, vehicle_no, imei, model, capacity, odo_meter) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [transporter_id, vehicle_no, imei, model, capacity, odo_meter]
+            'INSERT INTO vehicle_master (transporter_id, vehicle_no, imei, model, capacity, odo_meter, vehicle_type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [transporter_id, vehicle_no, imei, model, capacity, odo_meter, vehicle_type || 'truck']
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -43,9 +43,15 @@ const getLiveStatus = async (req, res) => {
 
     try {
         const query = `
-            SELECT vm.vehicle_no, vm.imei, vsl.* 
+            SELECT 
+                vm.vehicle_no, 
+                vm.imei, 
+                vm.vehicle_type, 
+                vsl.*,
+                COALESCE(vsl.icon, vim.icon_name) as current_icon
             FROM vehicle_status_live vsl
             JOIN vehicle_master vm ON vsl.vehicle_id = vm.id
+            LEFT JOIN vehicle_icon_mapping vim ON vm.vehicle_type = vim.vehicle_type AND vsl.status = vim.status
             WHERE vm.transporter_id = $1
         `;
         const result = await db.query(query, [transporter_id]);
