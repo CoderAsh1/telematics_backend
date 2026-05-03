@@ -1,6 +1,13 @@
 -- TimescaleDB Extension
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
+-- Vehicle Types Table
+CREATE TABLE IF NOT EXISTS vehicle_types (
+    id SERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL, -- e.g., 'truck', 'car', 'van'
+    description TEXT
+);
+
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -20,7 +27,7 @@ CREATE TABLE IF NOT EXISTS vehicle_master (
     vehicle_no TEXT UNIQUE NOT NULL,
     imei TEXT UNIQUE NOT NULL,
     model TEXT,
-    vehicle_type TEXT DEFAULT 'truck', 
+    vehicle_type_id INTEGER REFERENCES vehicle_types(id),
     capacity TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -56,14 +63,13 @@ CREATE TABLE IF NOT EXISTS vehicle_status_live (
     icon TEXT    
 );
 
--- Vehicle Icon Mapping Table
-CREATE TABLE IF NOT EXISTS vehicle_icon_mapping (
+-- Vehicle Type Icons Table (Maps Type + Status -> Icon/S3 URL)
+CREATE TABLE IF NOT EXISTS vehicle_type_icons (
     id SERIAL PRIMARY KEY,
-    vehicle_type TEXT NOT NULL,
-    status TEXT NOT NULL,
-    icon_name TEXT NOT NULL,
-    icon_url TEXT,
-    UNIQUE(vehicle_type, status)
+    vehicle_type_id INTEGER REFERENCES vehicle_types(id) ON DELETE CASCADE,
+    status TEXT NOT NULL, -- 'moving', 'idle', 'stopped', 'offline'
+    icon_url TEXT NOT NULL,
+    UNIQUE(vehicle_type_id, status)
 );
 
 -- TimescaleDB Hypertable initialization
