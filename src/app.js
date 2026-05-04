@@ -3,6 +3,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const vehicleRoutes = require('./routes/vehicleRoutes');
 const vehicleTypeRoutes = require('./routes/vehicleTypeRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/vehicle-types', vehicleTypeRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health Check
 app.get('/', (req, res) => {
